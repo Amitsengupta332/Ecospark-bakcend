@@ -1,0 +1,402 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+// enum Role {
+//   ADMIN
+//   MEMBER
+// }
+
+// enum UserStatus {
+//   ACTIVE
+//   BLOCKED
+// }
+
+// enum IdeaStatus {
+//   DRAFT
+//   UNDER_REVIEW
+//   APPROVED
+//   REJECTED
+// }
+
+// enum VoteType {
+//   UP
+//   DOWN
+// }
+
+// enum PaymentStatus {
+//   PENDING
+//   PAID
+//   FAILED
+//   REFUNDED
+// }
+
+// enum ReviewAction {
+//   APPROVED
+//   REJECTED
+//   REVIEW_NOTE
+// }
+
+// model User {
+//   id            String        @id @default(uuid())
+//   name          String
+//   email         String        @unique
+//   password      String
+//   avatar        String?
+//   role          Role          @default(MEMBER)
+//   status        UserStatus    @default(ACTIVE)
+
+//   ideas         Idea[]
+//   votes         Vote[]
+//   purchases     Purchase[]
+//   reviewsGiven  IdeaReview[]  @relation("AdminReviews")
+//   comments      Comment[]
+
+//   createdAt     DateTime      @default(now())
+//   updatedAt     DateTime      @updatedAt
+
+//   @@index([email])
+//   @@index([role])
+//   @@index([status])
+// }
+
+// model Category {
+//   id          String    @id @default(uuid())
+//   name        String    @unique
+//   slug        String    @unique
+//   description String?
+
+//   ideas       Idea[]
+
+//   createdAt   DateTime  @default(now())
+//   updatedAt   DateTime  @updatedAt
+
+//   @@index([name])
+//   @@index([slug])
+// }
+
+// model Idea {
+//   id                String        @id @default(uuid())
+//   title             String
+//   slug              String        @unique
+//   problemStatement  String
+//   proposedSolution  String
+//   description       String
+//   thumbnail         String?
+//   images            String[]
+
+//   status            IdeaStatus    @default(DRAFT)
+
+//   isPaid            Boolean       @default(false)
+//   price             Float         @default(0)
+
+//   authorId          String
+//   categoryId        String
+
+//   submittedAt       DateTime?
+//   approvedAt        DateTime?
+//   rejectedAt        DateTime?
+
+//   author            User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+//   category          Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+//   votes             Vote[]
+//   purchases         Purchase[]
+//   reviews           IdeaReview[]
+//   comments          Comment[]
+
+//   createdAt         DateTime      @default(now())
+//   updatedAt         DateTime      @updatedAt
+
+//   @@index([authorId])
+//   @@index([categoryId])
+//   @@index([status])
+//   @@index([isPaid])
+//   @@index([createdAt])
+//   @@index([title])
+// }
+
+// model Vote {
+//   id         String     @id @default(uuid())
+//   userId     String
+//   ideaId     String
+//   type       VoteType
+
+//   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   idea       Idea       @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+//   createdAt  DateTime   @default(now())
+//   updatedAt  DateTime   @updatedAt
+
+//   @@unique([userId, ideaId])
+//   @@index([userId])
+//   @@index([ideaId])
+//   @@index([type])
+// }
+
+// model Purchase {
+//   id             String         @id @default(uuid())
+//   userId         String
+//   ideaId         String
+//   amount         Float
+//   paymentStatus  PaymentStatus  @default(PENDING)
+//   transactionId  String?        @unique
+//   provider       String?
+//   paidAt         DateTime?
+
+//   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   idea           Idea           @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+//   createdAt      DateTime       @default(now())
+//   updatedAt      DateTime       @updatedAt
+
+//   @@unique([userId, ideaId])
+//   @@index([userId])
+//   @@index([ideaId])
+//   @@index([paymentStatus])
+// }
+
+// model IdeaReview {
+//   id          String        @id @default(uuid())
+//   ideaId       String
+//   adminId      String
+//   action       ReviewAction
+//   message      String?
+
+//   idea         Idea          @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+//   admin        User          @relation("AdminReviews", fields: [adminId], references: [id], onDelete: Cascade)
+
+//   createdAt    DateTime      @default(now())
+//   updatedAt    DateTime      @updatedAt
+
+//   @@index([ideaId])
+//   @@index([adminId])
+//   @@index([action])
+//   @@index([createdAt])
+// }
+
+// model Comment {
+//   id          String      @id @default(uuid())
+//   content     String
+
+//   userId      String
+//   ideaId      String
+//   parentId    String?
+
+//   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   idea        Idea        @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+//   parent      Comment?    @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+//   replies     Comment[]   @relation("CommentReplies")
+
+//   createdAt   DateTime    @default(now())
+//   updatedAt   DateTime    @updatedAt
+
+//   @@index([userId])
+//   @@index([ideaId])
+//   @@index([parentId])
+//   @@index([createdAt])
+// }
+
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+}
+
+enum IdeaStatus {
+  DRAFT
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum VoteType {
+  UP
+  DOWN
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum ReviewAction {
+  APPROVED
+  REJECTED
+  REVIEW_NOTE
+}
+
+model User {
+  id            String       @id @default(uuid())
+  name          String
+  email         String       @unique
+  password      String
+  avatar        String?
+  role          Role         @default(MEMBER)
+  status        UserStatus   @default(ACTIVE)
+
+  ideas         Idea[]
+  votes         Vote[]
+  purchases     Purchase[]
+  reviewsGiven  IdeaReview[] @relation("AdminReviews")
+  comments      Comment[]
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+}
+
+model Category {
+  id            String   @id @default(uuid())
+  name          String   @unique
+  slug          String   @unique
+  description   String?
+
+  ideas         Idea[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([name])
+  @@index([slug])
+}
+
+model Idea {
+  id                String        @id @default(uuid())
+  title             String
+  slug              String        @unique
+  problemStatement  String
+  proposedSolution  String
+  description       String
+  thumbnail         String?
+  images            String[]      @default([])
+
+  status            IdeaStatus    @default(DRAFT)
+
+  isPaid            Boolean       @default(false)
+  price             Float         @default(0)
+
+  authorId          String
+  categoryId        String
+
+  submittedAt       DateTime?
+  approvedAt        DateTime?
+  rejectedAt        DateTime?
+
+  author            User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category          Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  votes             Vote[]
+  purchases         Purchase[]
+  reviews           IdeaReview[]
+  comments          Comment[]
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([authorId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([isPaid])
+  @@index([createdAt])
+  @@index([title])
+}
+
+model Vote {
+  id         String     @id @default(uuid())
+  userId     String
+  ideaId     String
+  type       VoteType
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idea       Idea       @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@unique([userId, ideaId])
+  @@index([userId])
+  @@index([ideaId])
+  @@index([type])
+}
+
+model Purchase {
+  id             String         @id @default(uuid())
+  userId         String
+  ideaId         String
+  amount         Float
+  paymentStatus  PaymentStatus  @default(PENDING)
+  transactionId  String?        @unique
+  provider       String?
+  paidAt         DateTime?
+
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idea           Idea           @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([userId, ideaId])
+  @@index([userId])
+  @@index([ideaId])
+  @@index([paymentStatus])
+}
+
+model IdeaReview {
+  id         String        @id @default(uuid())
+  ideaId     String
+  adminId    String
+  action     ReviewAction
+  message    String?
+
+  idea       Idea          @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  admin      User          @relation("AdminReviews", fields: [adminId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([ideaId])
+  @@index([adminId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model Comment {
+  id         String      @id @default(uuid())
+  content    String
+
+  userId     String
+  ideaId     String
+  parentId   String?
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idea       Idea        @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+  parent     Comment?    @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies    Comment[]   @relation("CommentReplies")
+
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([ideaId])
+  @@index([parentId])
+  @@index([createdAt])
+}
