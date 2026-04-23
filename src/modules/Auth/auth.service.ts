@@ -13,92 +13,19 @@ export type TAuthUser = {
   avatar?: string;
 };
 
-const loginUser = async (payload: TAuthUser) => {
-  const user = await prisma.user.findUnique({
-    where: { email: payload.email },
-  });
-
-  if (!user || !payload.password || !user.password) {
-    throw new AppError(httpStatus.UNAUTHORIZED, "Invalid email or password");
-  }
-
-  if (user.status === "BLOCKED") {
-    throw new AppError(httpStatus.FORBIDDEN, "This account is blocked");
-  }
-
-  const isPasswordMatched = await bcryptJs.compare(
-    payload.password,
-    user.password
-  );
-
-  if (!isPasswordMatched) {
-    throw new AppError(httpStatus.UNAUTHORIZED, "Invalid email or password");
-  }
-
-  const jwtPayload = {
-    email: user.email,
-    role: user.role,
-    id: user.id,
-  };
-
-  const accessToken = createToken(
-    jwtPayload,
-    config.jwt_access_secret as string,
-    config.jwt_access_expires_in as any
-  );
-
-  const refreshToken = createToken(
-    jwtPayload,
-    config.jwt_refresh_secret as string,
-    config.jwt_refresh_expires_in as any
-  );
-
-  return {
-    accessToken,
-    refreshToken,
-  };
-};
-
-const refreshToken = async (token: string) => {
-  if (!token) {
-    throw new AppError(httpStatus.UNAUTHORIZED, "Refresh token is required!");
-  }
-
-  const decoded = verifyToken(token, config.jwt_refresh_secret as string);
-  const { email } = decoded;
-
-  const user = await prisma.user.findUnique({
-    where: { email },
-  });
-
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "This user is not found!");
-  }
-
-  if (user.status === "BLOCKED") {
-    throw new AppError(httpStatus.FORBIDDEN, "This account is blocked");
-  }
-
-  const jwtPayload = {
-    email: user.email,
-    role: user.role,
-    id: user.id,
-  };
-
-  const accessToken = createToken(
-    jwtPayload,
-    config.jwt_access_secret as string,
-    config.jwt_access_expires_in as any
-  );
-
-  return {
-    accessToken,
-  };
-};
-
 const registerUser = async (userData: TAuthUser) => {
+  if (!userData.email || !userData.password) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Email and password are required"
+    );
+  }
+
+  const email = userData.email.trim().toLowerCase();
+  const password = userData.password.trim();
+
   const isUserExists = await prisma.user.findUnique({
-    where: { email: userData.email },
+    where: { email },
   });
 
   if (isUserExists) {
@@ -106,16 +33,16 @@ const registerUser = async (userData: TAuthUser) => {
   }
 
   const hashedPassword = await bcryptJs.hash(
-    userData.password as string,
+    password,
     Number(config.bcrypt_salt_rounds)
   );
 
   const user = await prisma.user.create({
     data: {
-      name: userData.name || "",
-      email: userData.email,
+      name: userData.name?.trim() || "",
+      email,
       password: hashedPassword,
-      avatar: userData.avatar,
+      avatar: userData.avatar || "",
       role: USER_ROLE.MEMBER,
       status: "ACTIVE",
     },
@@ -127,14 +54,118 @@ const registerUser = async (userData: TAuthUser) => {
       role: true,
       status: true,
       createdAt: true,
+      updatedAt: true,
     },
   });
 
   return user;
 };
 
+const loginUser = async (payload: TAuthUser) => {
+  if (!payload.email || !payload.password) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Email and password are required"
+    );
+  }
+
+  const email = payload.email.trim().toLowerCase();
+  const password = payload.password.trim();
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (!user || !user.password) {
+    throw new AppError(httpStatus.UNAUTHORIZED, "Invalid email or password");
+  }
+
+  if (user.status === "BLOCKED") {
+    throw new AppError(httpStatus.FORBIDDEN, "This account is blocked");
+  }
+
+  const isPasswordMatched = await bcryptJs.compare(password, user.password);
+
+  if (!isPasswordMatched) {
+    throw new AppError(httpStatus.UNAUTHORIZED, "Invalid email or password");
+  }
+
+  const jwtPayload = {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+  };
+
+  const accessToken = createToken(
+    jwtPayload,
+    config.jwt_access_secret as string,
+   config.jwt_access_expires_in as any
+  );
+
+  const refreshToken = createToken(
+    jwtPayload,
+    config.jwt_refresh_secret as string,
+    config.jwt_refresh_expires_in as any
+  );
+
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      role: user.role,
+      status: user.status,
+    },
+  };
+};
+
+const getNewAccessToken = async (token: string) => {
+  if (!token) {
+    throw new AppError(httpStatus.UNAUTHORIZED, "Refresh token is required!");
+  }
+
+  const decoded = verifyToken(token, config.jwt_refresh_secret as string) as {
+    id: string;
+    email: string;
+    role: string;
+    iat: number;
+    exp: number;
+  };
+
+  const user = await prisma.user.findUnique({
+    where: { email: decoded.email },
+  });
+
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "This user is not found!");
+  }
+
+  if (user.status === "BLOCKED") {
+    throw new AppError(httpStatus.FORBIDDEN, "This account is blocked");
+  }
+
+  const jwtPayload = {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+  };
+
+  const accessToken = createToken(
+    jwtPayload,
+    config.jwt_access_secret as string,
+    config.jwt_access_expires_in as any
+  );
+
+  return {
+    accessToken,
+  };
+};
+
 export const AuthServices = {
-  loginUser,
-  refreshToken,
   registerUser,
+  loginUser,
+  getNewAccessToken,
 };
