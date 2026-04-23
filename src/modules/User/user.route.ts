@@ -11,7 +11,7 @@ import { USER_ROLE } from "./user.utils";
 const router = express.Router();
 router.post(
   "/",
-  auth(USER_ROLE.ADMIN),
+  auth(USER_ROLE.ADMIN), 
   validateRequest(createUserValidationSchema),
   UserController.createUser,
 );

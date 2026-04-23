@@ -6,7 +6,7 @@ import { PaymentRoutes } from "../modules/Payment/payment.route";
 
 type TModuleRoutes = {
   path: string;
-  route: Router;
+  route: Router; 
 };
 
 const router = Router();
