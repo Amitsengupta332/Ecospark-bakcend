@@ -3,6 +3,7 @@ import { AuthRoutes } from "../modules/Auth/auth.route";
 import { UserRoutes } from "../modules/User/user.route";
 
 import { PaymentRoutes } from "../modules/Payment/payment.route";
+import { CategoryRoutes } from "../modules/Category/category.route";
 
 type TModuleRoutes = {
   path: string;
@@ -20,7 +21,10 @@ const moduleRoutes: TModuleRoutes[] = [
     path: "/auth",
     route: AuthRoutes,
   },
-
+  {
+    path: "/categories",
+    route: CategoryRoutes,
+  },
   {
     path: "/payments",
     route: PaymentRoutes,
