@@ -4,10 +4,11 @@ import { UserRoutes } from "../modules/User/user.route";
 
 import { PaymentRoutes } from "../modules/Payment/payment.route";
 import { CategoryRoutes } from "../modules/Category/category.route";
+import { IdeaRoutes } from "../modules/Idea/idea.route";
 
 type TModuleRoutes = {
   path: string;
-  route: Router; 
+  route: Router;
 };
 
 const router = Router();
@@ -24,6 +25,10 @@ const moduleRoutes: TModuleRoutes[] = [
   {
     path: "/categories",
     route: CategoryRoutes,
+  },
+  {
+    path: "/ideas",
+    route: IdeaRoutes,
   },
   {
     path: "/payments",
