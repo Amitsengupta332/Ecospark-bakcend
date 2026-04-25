@@ -1,10 +1,13 @@
 import httpStatus from "http-status";
 import catchAsync from "../../utils/catchAsync";
-import { PaymentService } from "./payment.service";
 import sendResponse from "../../utils/sendResponse";
+import { PaymentService } from "./payment.service";
 
 const createPaymentIntent = catchAsync(async (req, res) => {
-  const result = await PaymentService.createPaymentIntent(req.body);
+  const result = await PaymentService.createPaymentIntent(
+    req.user.id,
+    req.body.ideaId
+  );
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
@@ -15,10 +18,10 @@ const createPaymentIntent = catchAsync(async (req, res) => {
 });
 
 const confirmPayment = catchAsync(async (req, res) => {
-  const { participationId, transactionId } = req.body;
   const result = await PaymentService.confirmPayment(
-    participationId,
-    transactionId
+    req.user.id,
+    req.body.ideaId,
+    req.body.transactionId
   );
 
   sendResponse(res, {
@@ -29,7 +32,19 @@ const confirmPayment = catchAsync(async (req, res) => {
   });
 });
 
+const getMyPurchases = catchAsync(async (req, res) => {
+  const result = await PaymentService.getMyPurchases(req.user.id);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Purchases retrieved successfully",
+    data: result,
+  });
+});
+
 export const PaymentController = {
   createPaymentIntent,
   confirmPayment,
+  getMyPurchases,
 };

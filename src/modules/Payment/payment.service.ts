@@ -1,162 +1,120 @@
 import Stripe from "stripe";
-import config from "../../config";
-import { TIPaymentResult, TPaymentConfirmation, TPaymentIntent } from "./payment.interface";
-import { prisma } from "../../lib/prisma";
-import AppError from "../../errors/AppError";
 import httpStatus from "http-status";
+import config from "../../config";
+import AppError from "../../errors/AppError";
+import { prisma } from "../../lib/prisma";
 
 const stripe = new Stripe(config.stripe_secret_key as string, {
   apiVersion: "2023-10-16" as any,
 });
 
-const createPaymentIntent = async (
-  payload: TPaymentIntent
-): Promise<TIPaymentResult> => {
-  const { participationId } = payload;
+const createPaymentIntent = async (userId: string, ideaId: string) => {
+  const idea = await prisma.idea.findUnique({
+    where: { id: ideaId },
+  });
 
-  const participation = await prisma.participation.findUnique({
-    where: { id: participationId },
-    include: {
-      event: true,
-      payment: true,
-      user: true,
+  if (!idea) {
+    throw new AppError(httpStatus.NOT_FOUND, "Idea not found");
+  }
+
+  if (idea.status !== "APPROVED") {
+    throw new AppError(httpStatus.BAD_REQUEST, "Idea is not approved");
+  }
+
+  if (!idea.isPaid || idea.price <= 0) {
+    throw new AppError(httpStatus.BAD_REQUEST, "This idea is free");
+  }
+
+  if (idea.authorId === userId) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Author cannot purchase own idea");
+  }
+
+  const existingPurchase = await prisma.purchase.findUnique({
+    where: {
+      userId_ideaId: {
+        userId,
+        ideaId,
+      },
     },
   });
 
-  if (!participation) {
-    throw new AppError(httpStatus.NOT_FOUND, "Participation not found");
+  if (existingPurchase?.paymentStatus === "PAID") {
+    throw new AppError(httpStatus.BAD_REQUEST, "Idea already purchased");
   }
-
-  if (participation.event.feeType !== "PAID") {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "This event does not require payment"
-    );
-  }
-
-  if (!participation.event.fee || participation.event.fee <= 0) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "Invalid event fee"
-    );
-  }
-
-  if (participation.payment && participation.payment.status === "success") {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "This participation is already paid"
-    );
-  }
-
-  const amount = participation.event.fee;
-  const amountInCents = Math.round(amount * 100);
 
   const paymentIntent = await stripe.paymentIntents.create({
-    amount: amountInCents,
+    amount: Math.round(idea.price * 100),
     currency: "usd",
     metadata: {
-      participationId: participation.id,
-      userId: participation.userId,
-      eventId: participation.eventId,
+      userId,
+      ideaId,
     },
     automatic_payment_methods: {
       enabled: true,
-      allow_redirects: "always",
+    },
+  });
+
+  await prisma.purchase.upsert({
+    where: {
+      userId_ideaId: {
+        userId,
+        ideaId,
+      },
+    },
+    update: {
+      amount: idea.price,
+      paymentStatus: "PENDING",
+      transactionId: paymentIntent.id,
+      provider: "stripe",
+    },
+    create: {
+      userId,
+      ideaId,
+      amount: idea.price,
+      paymentStatus: "PENDING",
+      transactionId: paymentIntent.id,
+      provider: "stripe",
     },
   });
 
   return {
-    clientSecret: paymentIntent.client_secret as string,
-    amount,
+    clientSecret: paymentIntent.client_secret,
+    amount: idea.price,
     transactionId: paymentIntent.id,
   };
 };
 
-const savePaymentRecord = async (payload: TPaymentConfirmation) => {
-  const result = await prisma.$transaction(async (tx) => {
-    const existingPayment = await tx.payment.findUnique({
-      where: {
-        participationId: payload.participationId,
-      },
-    });
-
-    if (existingPayment) {
-      return await tx.payment.update({
-        where: {
-          participationId: payload.participationId,
-        },
-        data: {
-          transactionId: payload.transactionId,
-          amount: payload.amount,
-          status: payload.status,
-        },
-      });
-    }
-
-    const payment = await tx.payment.create({
-      data: {
-        participationId: payload.participationId,
-        transactionId: payload.transactionId,
-        amount: payload.amount,
-        status: payload.status,
-      },
-    });
-
-    return payment;
-  });
-
-  return result;
-};
-
 const confirmPayment = async (
-  participationId: string,
+  userId: string,
+  ideaId: string,
   transactionId: string
 ) => {
-  const participation = await prisma.participation.findUnique({
-    where: { id: participationId },
-    include: {
-      event: true,
-      payment: true,
+  const purchase = await prisma.purchase.findUnique({
+    where: {
+      userId_ideaId: {
+        userId,
+        ideaId,
+      },
     },
   });
 
-  if (!participation) {
-    throw new AppError(httpStatus.NOT_FOUND, "Participation not found");
+  if (!purchase) {
+    throw new AppError(httpStatus.NOT_FOUND, "Purchase not found");
   }
 
-  let paymentIntent = await stripe.paymentIntents.retrieve(transactionId);
+  const paymentIntent = await stripe.paymentIntents.retrieve(transactionId);
 
-  if (paymentIntent.status === "requires_payment_method") {
-    paymentIntent = await stripe.paymentIntents.confirm(transactionId, {
-      payment_method: "pm_card_visa",
-    });
-  }
-
-  if (paymentIntent.status === "succeeded") {
-    const amount = paymentIntent.amount / 100;
-
-    const existingPayment = await prisma.payment.findFirst({
-      where: { transactionId },
-    });
-
-    if (existingPayment) {
-      return existingPayment;
-    }
-
-    return await savePaymentRecord({
-      participationId,
-      transactionId,
-      amount,
-      status: "success",
-      gatewayData: paymentIntent as unknown as Record<string, any>,
-    });
-  } else {
-    await savePaymentRecord({
-      participationId,
-      transactionId,
-      amount: participation.event.fee || 0,
-      status: "failed",
-      gatewayData: paymentIntent as unknown as Record<string, any>,
+  if (paymentIntent.status !== "succeeded") {
+    await prisma.purchase.update({
+      where: {
+        userId_ideaId: {
+          userId,
+          ideaId,
+        },
+      },
+      data: {
+        paymentStatus: "FAILED",
+      },
     });
 
     throw new AppError(
@@ -164,9 +122,48 @@ const confirmPayment = async (
       `Payment status is ${paymentIntent.status}`
     );
   }
+
+  const result = await prisma.purchase.update({
+    where: {
+      userId_ideaId: {
+        userId,
+        ideaId,
+      },
+    },
+    data: {
+      paymentStatus: "PAID",
+      transactionId,
+      paidAt: new Date(),
+    },
+    include: {
+      idea: true,
+    },
+  });
+
+  return result;
+};
+
+const getMyPurchases = async (userId: string) => {
+  return await prisma.purchase.findMany({
+    where: {
+      userId,
+      paymentStatus: "PAID",
+    },
+    include: {
+      idea: {
+        include: {
+          category: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
 };
 
 export const PaymentService = {
   createPaymentIntent,
   confirmPayment,
+  getMyPurchases,
 };

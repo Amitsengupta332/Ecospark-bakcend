@@ -2,13 +2,13 @@ import { z } from "zod";
 
 const createPaymentIntentValidationSchema = z.object({
   body: z.object({
-    participationId: z.string().min(1, "Participation id is required"),
+    ideaId: z.string().min(1, "Idea id is required"),
   }),
 });
 
 const confirmPaymentValidationSchema = z.object({
   body: z.object({
-    participationId: z.string().min(1, "Participation id is required"),
+    ideaId: z.string().min(1, "Idea id is required"),
     transactionId: z.string().min(1, "Transaction id is required"),
   }),
 });
