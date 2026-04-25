@@ -6,6 +6,7 @@ import { PaymentRoutes } from "../modules/Payment/payment.route";
 import { CategoryRoutes } from "../modules/Category/category.route";
 import { IdeaRoutes } from "../modules/Idea/idea.route";
 import { VoteRoutes } from "../modules/Vote/vote.route";
+import { DashboardRoutes } from "../modules/Dashboard/dashboard.route";
 
 type TModuleRoutes = {
   path: string;
@@ -39,6 +40,10 @@ const moduleRoutes: TModuleRoutes[] = [
     path: "/payments",
     route: PaymentRoutes,
   },
+  {
+    path: "/dashboard",
+    route: DashboardRoutes,
+  }
 ];
 
 moduleRoutes.forEach((route) => router.use(route.path, route.route));
